@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<DiscoverySection> _sections = [];
   List<TopChart> _charts = [];
   List<Episode> _forYou = []; // 为你推荐
-  List<Episode> _editorPicks = []; // 编辑精选
+  List<EditorPick> _editorPicks = []; // 编辑精选
   List<Podcast> _pilotShows = []; // 为你精选的节目
   bool _refreshingRecommend = false;
 
@@ -51,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       // 新增的三个分区，失败不阻塞
       List<Episode> forYou = [];
-      List<Episode> editorPicks = [];
+      List<EditorPick> editorPicks = [];
       List<Podcast> pilotShows = [];
       try {
         forYou = await svc.recommendEpisodes();
@@ -164,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
             j--;
           }
           if (_editorPicks.isNotEmpty) {
-            if (j == 0) return _buildEpisodeSection('编辑精选', _editorPicks);
+            if (j == 0) return _buildEditorPicks();
             j--;
           }
           if (_pilotShows.isNotEmpty) {
@@ -177,46 +177,222 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 横滑单集分区（为你推荐 / 编辑精选）。
+  /// 竖排单集列表（为你推荐 / 编辑精选）：封面 + 节目名 + 标题 + 副标题 + 播放按钮。
   Widget _buildEpisodeSection(String title, List<Episode> episodes) {
+    final items = episodes.take(3).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(title: title),
-        SizedBox(
-          height: 148,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: episodes.length.clamp(0, 10),
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, k) {
-              final ep = episodes[k];
-              return InkWell(
-                onTap: () => context
-                    .read<PlayerService>()
-                    .playQueue(episodes, k),
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 120,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        ...items.asMap().entries.map((e) {
+          final k = e.key;
+          final ep = e.value;
+          return InkWell(
+            onTap: () =>
+                context.read<PlayerService>().playQueue(episodes, k),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CoverImage(url: ep.coverUrl, size: 72, radius: 10),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (ep.podcastTitle.isNotEmpty)
+                          Text(
+                            ep.podcastTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          ep.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _episodeSubtitle(ep),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.5),
+                    ),
+                    child: Icon(
+                      Icons.play_arrow,
+                      size: 26,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  String _episodeSubtitle(Episode ep) {
+    // 优先显示发布日期，没有则显示评论数
+    if (ep.pubDate.isNotEmpty) return ep.pubDate;
+    if (ep.commentCount > 0) return '${ep.commentCount} 条评论';
+    return '';
+  }
+
+  /// 编辑精选：带评语的列表（照官方样式：评语引用块 + 单集行）。
+  Widget _buildEditorPicks() {
+    final items = _editorPicks.take(3).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: '编辑精选'),
+        ...items.asMap().entries.map((e) {
+          final k = e.key;
+          final pick = e.value;
+          final ep = pick.episode;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 评语引用块
+              if (pick.comment.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      pick.comment,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              // 单集行
+              InkWell(
+                onTap: () => context.read<PlayerService>().playQueue(
+                    items.map((p) => p.episode).toList(), k),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      CoverImage(url: ep.coverUrl, size: 120, radius: 12),
-                      const SizedBox(height: 6),
-                      Text(
-                        ep.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, height: 1.3),
+                      CoverImage(url: ep.coverUrl, size: 72, radius: 10),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (ep.podcastTitle.isNotEmpty)
+                              Text(
+                                ep.podcastTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            const SizedBox(height: 4),
+                            Text(
+                              ep.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                              ),
+                            ),
+                            if (_episodeSubtitle(ep).isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                _episodeSubtitle(ep),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primaryContainer
+                              .withValues(alpha: 0.5),
+                        ),
+                        child: Icon(
+                          Icons.play_arrow,
+                          size: 26,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-        ),
+              ),
+            ],
+          );
+        }),
         const SizedBox(height: 8),
       ],
     );

@@ -365,3 +365,11 @@ class ClapPoint {
 
   const ClapPoint({this.positionMs = 0, this.content = ''});
 }
+
+/// 编辑精选：单集 + 编辑评语。
+class EditorPick {
+  final Episode episode;
+  final String comment;
+
+  const EditorPick({required this.episode, this.comment = ''});
+}

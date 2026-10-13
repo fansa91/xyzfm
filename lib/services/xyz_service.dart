@@ -169,24 +169,34 @@ class XyzService {
     return podcasts;
   }
 
-  /// 编辑精选：data: [{date, picks: [{comment, episode}]}]，取 picks 里的 episode。
+  /// 编辑精选：data: [{date, picks: [{comment, episode}]}]，取 picks 里的 episode 和评语。
   /// abtest-info 必须为 "{}"。
-  Future<List<Episode>> editorPicks() async {
+  Future<List<EditorPick>> editorPicks() async {
     final resp = await api.post('/v1/editor-pick/list-history', {}, '{}');
-    final episodes = <Episode>[];
+    final picks = <EditorPick>[];
     for (final e in _dataList(resp)) {
-      final picks = e['picks'];
-      if (picks is List) {
-        for (final p in picks) {
+      final pickList = e['picks'];
+      if (pickList is List) {
+        for (final p in pickList) {
           final pm = _asMap(p);
           final em = pm == null ? null : _asMap(pm['episode']);
           if (em != null && str(em['eid']).isNotEmpty) {
-            episodes.add(Episode.fromJson(em));
+            // 评语在 comment.body 或 comment.text 里
+            final cm = pm == null ? null : _asMap(pm['comment']);
+            final commentText = cm == null
+                ? ''
+                : str(cm['body']).isNotEmpty
+                    ? str(cm['body'])
+                    : str(cm['text']);
+            picks.add(EditorPick(
+              episode: Episode.fromJson(em),
+              comment: commentText,
+            ));
           }
         }
       }
     }
-    return episodes;
+    return picks;
   }
 
   /// 为你推荐：data 是对象 {target: [{episode}]}}，取 target 里的 episode。
