@@ -37,8 +37,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('订阅', style: TextStyle(fontWeight: FontWeight.bold)),
-        bottom: const TabBar(
-          tabs: [Tab(text: '我的订阅'), Tab(text: '订阅更新')],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [Tab(text: '我的订阅'), Tab(text: '订阅更新')],
         ),
       ),
       body: TabBarView(
