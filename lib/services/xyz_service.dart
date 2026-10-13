@@ -403,7 +403,7 @@ class XyzService {
 
   /// 已收藏的单集列表。
   Future<List<Episode>> favoriteEpisodes() async {
-    final resp = await api.post('/v1/favorite/list', {}, '{}');
+    final resp = await api.post('/v1/favorite/list', {});
     return _dataList(resp).map(Episode.fromJson).toList();
   }
 

@@ -178,20 +178,27 @@ class XyzApiClient {
       if (status == 401 && allowRefresh && await _refreshTokens()) {
         return _request(send, allowRefresh: false);
       }
+      // 401 且刷新失败/无 refresh token：明确提示重新登录，方便定位。
+      if (status == 401) {
+        throw XyzException('登录已过期，请重新登录', statusCode: status);
+      }
       throw XyzException(
         _errorMessage(e.response?.data) ??
             '网络请求失败${status != null ? '（HTTP $status）' : ''}',
+        statusCode: status,
       );
     }
     final data = _asMap(resp.data);
     final err = data['error'];
     if (err != null) {
-      final msg = _errorMessage(data) ?? '请求失败';
       final code = err is Map ? intOf(err['code']) : 0;
       if (code == 401 && allowRefresh && await _refreshTokens()) {
         return _request(send, allowRefresh: false);
       }
-      throw XyzException(msg);
+      if (code == 401) {
+        throw XyzException('登录已过期，请重新登录', statusCode: 401);
+      }
+      throw XyzException(_errorMessage(data) ?? '请求失败');
     }
     return data;
   }

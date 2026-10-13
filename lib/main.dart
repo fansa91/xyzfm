@@ -82,9 +82,7 @@ class XyzFmApp extends StatelessWidget {
           case '/podcast':
             if (args is String) {
               return MaterialPageRoute(
-                builder: (_) => DetailScaffold(
-                  child: PodcastDetailScreen(pid: args),
-                ),
+                builder: (_) => PodcastDetailScreen(pid: args),
               );
             }
           case '/player':
@@ -103,18 +101,15 @@ class XyzFmApp extends StatelessWidget {
           case '/comments':
             if (args is Episode) {
               return MaterialPageRoute(
-                builder: (_) =>
-                    DetailScaffold(child: CommentsScreen(episode: args)),
+                builder: (_) => CommentsScreen(episode: args),
               );
             }
           case '/chart':
             if (args is Map) {
               return MaterialPageRoute(
-                builder: (_) => DetailScaffold(
-                  child: ChartScreen(
-                    title: '${args['title'] ?? '榜单'}',
-                    category: '${args['category'] ?? 'HOT'}',
-                  ),
+                builder: (_) => ChartScreen(
+                  title: '${args['title'] ?? '榜单'}',
+                  category: '${args['category'] ?? 'HOT'}',
                 ),
               );
             }
