@@ -5,6 +5,7 @@ import '../core/api.dart';
 import '../models/models.dart';
 import '../services/player_service.dart';
 import '../services/xyz_service.dart';
+import '../widgets/cover_image.dart';
 import '../widgets/episode_tile.dart';
 import '../widgets/podcast_card.dart';
 import '../widgets/section_header.dart';
@@ -22,6 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   List<DiscoverySection> _sections = [];
   List<TopChart> _charts = [];
+  List<Episode> _forYou = []; // 为你推荐
+  List<Episode> _editorPicks = []; // 编辑精选
+  List<Podcast> _pilotShows = []; // 为你精选的节目
   bool _refreshingRecommend = false;
 
   @override
@@ -45,10 +49,26 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (_) {
         // 榜单失败不影响主体内容
       }
+      // 新增的三个分区，失败不阻塞
+      List<Episode> forYou = [];
+      List<Episode> editorPicks = [];
+      List<Podcast> pilotShows = [];
+      try {
+        forYou = await svc.recommendEpisodes();
+      } catch (_) {}
+      try {
+        editorPicks = await svc.editorPicks();
+      } catch (_) {}
+      try {
+        pilotShows = await svc.pilotDiscovery();
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _sections = sections;
         _charts = charts;
+        _forYou = forYou;
+        _editorPicks = editorPicks;
+        _pilotShows = pilotShows;
         _loading = false;
       });
     } on XyzException catch (e) {
@@ -131,12 +151,103 @@ class _HomeScreenState extends State<HomeScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
-        itemCount: _sections.length + (_charts.isEmpty ? 0 : 1),
+        itemCount: _sections.length +
+            (_forYou.isEmpty ? 0 : 1) +
+            (_editorPicks.isEmpty ? 0 : 1) +
+            (_pilotShows.isEmpty ? 0 : 1) +
+            (_charts.isEmpty ? 0 : 1),
         itemBuilder: (context, i) {
           if (i < _sections.length) return _buildSection(_sections[i], i);
+          var j = i - _sections.length;
+          if (_forYou.isNotEmpty) {
+            if (j == 0) return _buildEpisodeSection('为你推荐', _forYou);
+            j--;
+          }
+          if (_editorPicks.isNotEmpty) {
+            if (j == 0) return _buildEpisodeSection('编辑精选', _editorPicks);
+            j--;
+          }
+          if (_pilotShows.isNotEmpty) {
+            if (j == 0) return _buildPilotSection();
+            j--;
+          }
           return _buildCharts();
         },
       ),
+    );
+  }
+
+  /// 横滑单集分区（为你推荐 / 编辑精选）。
+  Widget _buildEpisodeSection(String title, List<Episode> episodes) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: title),
+        SizedBox(
+          height: 148,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: episodes.length.clamp(0, 10),
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, k) {
+              final ep = episodes[k];
+              return InkWell(
+                onTap: () => context
+                    .read<PlayerService>()
+                    .playQueue(episodes, k),
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 120,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CoverImage(url: ep.coverUrl, size: 120, radius: 12),
+                      const SizedBox(height: 6),
+                      Text(
+                        ep.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, height: 1.3),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  /// 为你精选的节目：横滑节目卡片。
+  Widget _buildPilotSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: '为你精选的节目'),
+        SizedBox(
+          height: 190,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _pilotShows.length.clamp(0, 10),
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, k) {
+              final p = _pilotShows[k];
+              return PodcastCard(
+                podcast: p,
+                width: 120,
+                onTap: () =>
+                    Navigator.pushNamed(context, '/podcast', arguments: p.pid),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 

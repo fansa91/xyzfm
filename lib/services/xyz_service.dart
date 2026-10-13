@@ -151,6 +151,40 @@ class XyzService {
   /// 榜单：依次拉取最热榜（HOT）、锋芒榜（ROCK）、新星榜（NEW）。
   /// 上游为 GET `/v1/top-list/get?category=...`，返回 {title, items: [{item: {…单集…}}]}。
   /// 单个榜单失败不影响其他榜单。
+  /// 为你推荐：新节目广场（pilot-discovery）。abtest-info 必须为 "{}"。
+  Future<List<Podcast>> pilotDiscovery() async {
+    final resp = await api.post('/v1/pilot-discovery/list', {}, '{}');
+    return _dataList(resp)
+        .map((e) => Podcast.fromJson(_asMap(e['podcast']) ?? e))
+        .toList();
+  }
+
+  /// 编辑精选：编辑精选历史。abtest-info 必须为 "{}"。
+  Future<List<Episode>> editorPicks() async {
+    final resp = await api.post('/v1/editor-pick/list-history', {}, '{}');
+    final episodes = <Episode>[];
+    for (final e in _dataList(resp)) {
+      final em = _asMap(e['episode']) ?? e;
+      // 有些条目直接是单集，有些包一层
+      if (str(em['eid']).isNotEmpty || str(em['type']) == 'EPISODE') {
+        episodes.add(Episode.fromJson(em));
+      }
+    }
+    return episodes;
+  }
+
+  /// 为你推荐的单集：刷新推荐。需要登录。
+  Future<List<Episode>> recommendEpisodes() async {
+    final resp =
+        await api.post('/v1/discovery-collection/refresh-episode-recommend', {});
+    final episodes = <Episode>[];
+    for (final e in _dataList(resp)) {
+      final em = _asMap(e['episode']) ?? _asMap(e['item']) ?? e;
+      if (str(em['eid']).isNotEmpty) episodes.add(Episode.fromJson(em));
+    }
+    return episodes;
+  }
+
   Future<List<TopChart>> topList() async {
     const categories = {
       'HOT': 'HOT_EPISODES_IN_24_HOURS',
