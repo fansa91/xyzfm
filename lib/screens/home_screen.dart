@@ -5,7 +5,6 @@ import '../core/api.dart';
 import '../models/models.dart';
 import '../services/player_service.dart';
 import '../services/xyz_service.dart';
-import '../widgets/cover_image.dart';
 import '../widgets/episode_tile.dart';
 import '../widgets/podcast_card.dart';
 import '../widgets/section_header.dart';
@@ -220,42 +219,42 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _chartCategories = ['HOT', 'ROCK', 'NEW'];
 
   Widget _buildCharts() {
+    final charts = <TopChart>[];
+    final categories = <String>[];
+    for (int i = 0; i < _charts.length && i < _chartCategories.length; i++) {
+      if (_charts[i].episodes.isNotEmpty) {
+        charts.add(_charts[i]);
+        categories.add(_chartCategories[i]);
+      }
+    }
+    if (charts.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int i = 0; i < _charts.length; i++)
-          _buildChartRow(_charts[i], _chartCategories[i]),
+        const SectionHeader(title: '榜单'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          // 最热 / 锋芒 / 新星三张卡片一横排
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < charts.length; i++)
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: i == 0 ? 0 : 6,
+                      right: i == charts.length - 1 ? 0 : 6,
+                    ),
+                    child: _ChartCard(
+                      chart: charts[i],
+                      category: categories[i],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
         const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _buildChartRow(TopChart chart, String category) {
-    if (chart.episodes.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: chart.title,
-          onMore: () => Navigator.pushNamed(
-            context,
-            '/chart',
-            arguments: {'title': chart.title, 'category': category},
-          ),
-        ),
-        SizedBox(
-          height: 92,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: chart.episodes.length.clamp(0, 10),
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, j) {
-              final ep = chart.episodes[j];
-              return _ChartEpisodeCard(episode: ep, rank: j + 1);
-            },
-          ),
-        ),
       ],
     );
   }
@@ -309,83 +308,84 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// 榜单横向小卡片：排名 + 封面 + 标题，点击按榜单队列播放。
-class _ChartEpisodeCard extends StatelessWidget {
-  final Episode episode;
-  final int rank;
+/// 榜单卡片：标题 + 前三名（排名+标题），点卡片进榜单详情，点单集播放。
+class _ChartCard extends StatelessWidget {
+  final TopChart chart;
+  final String category;
 
-  const _ChartEpisodeCard({required this.episode, required this.rank});
+  const _ChartCard({required this.chart, required this.category});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      onTap: () {
-        // 找到所在榜单的完整列表，按队列播放
-        final state = context.findAncestorStateOfType<_HomeScreenState>();
-        final charts = state?._charts ?? const <TopChart>[];
-        TopChart? chart;
-        for (final c in charts) {
-          if (c.episodes.any((e) => e.eid == episode.eid)) {
-            chart = c;
-            break;
-          }
-        }
-        final list =
-            (chart != null && chart.episodes.isNotEmpty) ? chart.episodes : [episode];
-        final idx = list.indexWhere((e) => e.eid == episode.eid);
-        context.read<PlayerService>().playQueue(list, idx < 0 ? 0 : idx);
-      },
+    final eps = chart.episodes.take(3).toList();
+    return Material(
+      color: theme.colorScheme.surfaceContainer,
       borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 240,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 28,
-              child: Text(
-                '$rank',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.pushNamed(
+          context,
+          '/chart',
+          arguments: {'title': chart.title, 'category': category},
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                chart.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  fontStyle: FontStyle.italic,
-                  color: rank <= 3
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            ),
-            CoverImage(url: episode.coverUrl, size: 64, radius: 8),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    episode.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        height: 1.3),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    episode.podcastTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 12,
+              const SizedBox(height: 8),
+              for (int i = 0; i < eps.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: InkWell(
+                    onTap: () => context
+                        .read<PlayerService>()
+                        .playQueue(chart.episodes, i),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          child: Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                              color: i == 0
+                                  ? Colors.red
+                                  : i == 1
+                                      ? Colors.orange
+                                      : i == 2
+                                          ? Colors.amber.shade700
+                                          : theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            eps[i].title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+            ],
+          ),
         ),
       ),
     );
