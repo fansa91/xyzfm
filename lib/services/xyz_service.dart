@@ -151,36 +151,61 @@ class XyzService {
   /// 榜单：依次拉取最热榜（HOT）、锋芒榜（ROCK）、新星榜（NEW）。
   /// 上游为 GET `/v1/top-list/get?category=...`，返回 {title, items: [{item: {…单集…}}]}。
   /// 单个榜单失败不影响其他榜单。
-  /// 为你推荐：新节目广场（pilot-discovery）。abtest-info 必须为 "{}"。
+  /// 为你精选的节目：新节目广场（pilot-discovery）。
+  /// 返回 data: [{episode: {podcast: {...}}}]，提取 podcast 并按 pid 去重。
+  /// abtest-info 必须为 "{}"。
   Future<List<Podcast>> pilotDiscovery() async {
     final resp = await api.post('/v1/pilot-discovery/list', {}, '{}');
-    return _dataList(resp)
-        .map((e) => Podcast.fromJson(_asMap(e['podcast']) ?? e))
-        .toList();
+    final podcasts = <Podcast>[];
+    final seen = <String>{};
+    for (final e in _dataList(resp)) {
+      final ep = _asMap(e['episode']) ?? e;
+      final pm = _asMap(ep['podcast']);
+      if (pm == null) continue;
+      final pid = str(pm['pid']);
+      if (pid.isEmpty || !seen.add(pid)) continue;
+      podcasts.add(Podcast.fromJson(pm));
+    }
+    return podcasts;
   }
 
-  /// 编辑精选：编辑精选历史。abtest-info 必须为 "{}"。
+  /// 编辑精选：data: [{date, picks: [{comment, episode}]}]，取 picks 里的 episode。
+  /// abtest-info 必须为 "{}"。
   Future<List<Episode>> editorPicks() async {
     final resp = await api.post('/v1/editor-pick/list-history', {}, '{}');
     final episodes = <Episode>[];
     for (final e in _dataList(resp)) {
-      final em = _asMap(e['episode']) ?? e;
-      // 有些条目直接是单集，有些包一层
-      if (str(em['eid']).isNotEmpty || str(em['type']) == 'EPISODE') {
-        episodes.add(Episode.fromJson(em));
+      final picks = e['picks'];
+      if (picks is List) {
+        for (final p in picks) {
+          final pm = _asMap(p);
+          final em = pm == null ? null : _asMap(pm['episode']);
+          if (em != null && str(em['eid']).isNotEmpty) {
+            episodes.add(Episode.fromJson(em));
+          }
+        }
       }
     }
     return episodes;
   }
 
-  /// 为你推荐的单集：刷新推荐。需要登录。
+  /// 为你推荐：data 是对象 {target: [{episode}]}}，取 target 里的 episode。
+  /// 需要登录。
   Future<List<Episode>> recommendEpisodes() async {
     final resp =
         await api.post('/v1/discovery-collection/refresh-episode-recommend', {});
+    final data = _asMap(resp['data']);
+    final target = data == null ? null : data['target'];
     final episodes = <Episode>[];
-    for (final e in _dataList(resp)) {
-      final em = _asMap(e['episode']) ?? _asMap(e['item']) ?? e;
-      if (str(em['eid']).isNotEmpty) episodes.add(Episode.fromJson(em));
+    if (target is List) {
+      for (final t in target) {
+        final tm = _asMap(t);
+        final em = tm == null ? null : _asMap(tm['episode']);
+        final src = em ?? tm;
+        if (src != null && str(src['eid']).isNotEmpty) {
+          episodes.add(Episode.fromJson(src));
+        }
+      }
     }
     return episodes;
   }
