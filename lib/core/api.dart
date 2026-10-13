@@ -6,7 +6,10 @@ import 'utils.dart';
 class XyzException implements Exception {
   final String message;
 
-  XyzException(this.message);
+  /// HTTP 状态码（有的话），比如扫码轮询时 400/401 表示二维码已失效。
+  final int? statusCode;
+
+  XyzException(this.message, {this.statusCode});
 
   @override
   String toString() => 'XyzException: $message';
@@ -131,6 +134,34 @@ class XyzApiClient {
     } on DioException catch (e) {
       throw XyzException(
         _errorMessage(e.response?.data) ?? '请求失败，请稍后重试',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// 扫码登录专用：走小宇宙 web-api（https://web-api.xiaoyuzhoufm.com），
+  /// 请求头照抄 ultrazg/horizon 项目 bridge/http.go 里抓到的官方 web 请求。
+  /// 返回原始 Response：成功时 token 在响应头
+  /// `x-jike-access-token` / `x-jike-refresh-token` 里。
+  Future<Response> postQrcode(String path, Map<String, dynamic> body) async {
+    const headers = {
+      'content-type': 'application/json;charset=UTF-8',
+      'x-midway-app-id': 'v6worU4NnWyL',
+      'origin': 'https://accounts.xiaoyuzhoufm.com/',
+      'referer': 'https://accounts.xiaoyuzhoufm.com/',
+      'user-agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
+    };
+    try {
+      return await _dio.post(
+        'https://web-api.xiaoyuzhoufm.com$path',
+        data: body,
+        options: Options(headers: headers),
+      );
+    } on DioException catch (e) {
+      throw XyzException(
+        _errorMessage(e.response?.data) ?? '请求失败，请稍后重试',
+        statusCode: e.response?.statusCode,
       );
     }
   }

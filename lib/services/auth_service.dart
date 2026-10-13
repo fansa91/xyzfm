@@ -11,6 +11,13 @@ import '../models/models.dart';
 /// - 登录：POST https://podcaster-api.xiaoyuzhoufm.com/v1/auth/login-with-sms（浏览器 UA 头）
 /// - **token 在响应头** `x-jike-access-token` / `x-jike-refresh-token` 里，
 ///   用户信息在 body 的 `data.user`（{uid, nickname, avatar{picture{...}}, bio}）。
+///
+/// 扫码登录（照抄 ultrazg/horizon 项目 bridge/http.go 抓到的官方 web-api）：
+/// - 建码：POST https://web-api.xiaoyuzhoufm.com/v1/auth/qrcode/create
+///   body {"clientId": "xyz-web"} → {"id", "url"}（url 即二维码内容）
+/// - 轮询：POST https://web-api.xiaoyuzhoufm.com/v1/auth/qrcode/login
+///   body {"id"} → 确认后 token 同样在响应头里，body.status 为 USED；
+///   轮询返回 400/401 表示二维码已失效。
 class AuthService extends ChangeNotifier {
   static const _sendCodeUrl =
       'https://podcaster-api.xiaoyuzhoufm.com/v1/auth/send-code';
@@ -95,6 +102,63 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 创建扫码登录会话，返回 (id, url)，url 即二维码内容。
+  Future<({String id, String url})> createQrcode() async {
+    final resp = await api.postQrcode(
+      '/v1/auth/qrcode/create',
+      {'clientId': 'xyz-web'},
+    );
+    final data = resp.data is Map
+        ? Map<String, dynamic>.from(resp.data as Map)
+        : <String, dynamic>{};
+    final id = str(data['id']);
+    final url = str(data['url']);
+    if (id.isEmpty || url.isEmpty) throw XyzException('获取二维码失败');
+    return (id: id, url: url);
+  }
+
+  /// 轮询扫码状态：WAITTING（等扫码）/ SCANNED（已扫待确认）/
+  /// USED（已确认，带 token）/ EXPIRED（已失效）/ ERROR（网络等错误）。
+  Future<QrcodePollResult> pollQrcode(String id) async {
+    try {
+      final resp = await api.postQrcode('/v1/auth/qrcode/login', {'id': id});
+      final access = resp.headers.value('x-jike-access-token');
+      final refresh = resp.headers.value('x-jike-refresh-token');
+      if (access != null && access.isNotEmpty) {
+        return QrcodePollResult.used(access, refresh);
+      }
+      final data = resp.data is Map
+          ? Map<String, dynamic>.from(resp.data as Map)
+          : <String, dynamic>{};
+      final status = str(data['status']);
+      return QrcodePollResult(status.isEmpty ? 'WAITTING' : status);
+    } on XyzException catch (e) {
+      if (e.statusCode == 400 || e.statusCode == 401) {
+        return const QrcodePollResult('EXPIRED');
+      }
+      return const QrcodePollResult('ERROR');
+    }
+  }
+
+  /// 扫码确认后：写入 token，拉取用户信息，完成登录。
+  Future<void> finishQrcodeLogin(String accessToken, String? refreshToken) async {
+    api.setTokens(accessToken, refreshToken);
+    final resp = await api.get('/v1/profile/get');
+    final data = resp['data'] is Map
+        ? Map<String, dynamic>.from(resp['data'] as Map)
+        : <String, dynamic>{};
+    final nickname = str(data['nickname']);
+    if (nickname.isEmpty) throw XyzException('登录失败：获取用户信息失败');
+    _uid = str(data['uid']);
+    _nickname = nickname;
+    _avatar = picUrl(data['avatar']);
+    _bio = str(data['bio']);
+    _loggedIn = true;
+    _loading = false;
+    await _persist();
+    notifyListeners();
+  }
+
   /// 启动时恢复登录态：读 prefs 恢复 token；若有 token 则用
   /// GET `/v1/profile/get?uid=` 校验有效性（token 过期会自动尝试刷新），
   /// 失败则登出。
@@ -160,4 +224,21 @@ class AuthService extends ChangeNotifier {
     await p.setString(_keyAvatar, _avatar);
     await p.setString(_keyBio, _bio);
   }
+}
+
+/// 扫码登录轮询结果。
+class QrcodePollResult {
+  /// WAITTING（等扫码）/ SCANNED（已扫待确认）/ USED（已确认，带 token）/
+  /// EXPIRED（已失效）/ ERROR（网络等错误，可继续轮询）。
+  final String status;
+  final String? accessToken;
+  final String? refreshToken;
+
+  const QrcodePollResult(this.status, {this.accessToken, this.refreshToken});
+
+  const QrcodePollResult.used(String access, String? refresh)
+      : this('USED', accessToken: access, refreshToken: refresh);
+
+  bool get succeeded => status == 'USED' && (accessToken ?? '').isNotEmpty;
+  bool get expired => status == 'EXPIRED';
 }

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- 复刻 ultrazg/xyz README 的 logo（土星造型）：深棕圆环 + 浅粉椭圆环 -->
+  <defs>
+    <clipPath id="frontClip">
+      <!-- 前半段：过圆心、与椭圆同倾角(-18.4°)的直线下方区域 -->
+      <polygon points="-89.8,166.2 289.8,39.8 289.8,400 -89.8,400"/>
+    </clipPath>
+  </defs>
+  <!-- 1. 完整浅粉椭圆环（后半段会被圆环盖住） -->
+  <ellipse cx="99.5" cy="99.5" rx="97.5" ry="48.5"
+           transform="rotate(-18.4 99.5 99.5)"
+           fill="none" stroke="#f0d0c0" stroke-width="10"/>
+  <!-- 2. 深棕圆环 -->
+  <circle cx="100" cy="103" r="60" fill="none" stroke="#503030" stroke-width="12"/>
+  <!-- 3. 浅粉椭圆环前半段（从圆环前方穿过） -->
+  <g clip-path="url(#frontClip)">
+    <ellipse cx="99.5" cy="99.5" rx="97.5" ry="48.5"
+             transform="rotate(-18.4 99.5 99.5)"
+             fill="none" stroke="#f0d0c0" stroke-width="10"/>
+  </g>
+</svg>
