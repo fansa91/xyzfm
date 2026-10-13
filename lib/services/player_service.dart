@@ -289,7 +289,7 @@ class PlayerService extends ChangeNotifier {
     if (_failed.contains(ep.eid)) return;
     final cached = _resolved[ep.eid];
     if (cached != null && cached.audioUrl.isNotEmpty) return;
-    _resolveEpisode(ep).catchError((_) {});
+    _resolveEpisode(ep).catchError((_) => null);
   }
 
   // ---------- 播放进度云同步 ----------

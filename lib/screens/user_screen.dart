@@ -358,7 +358,7 @@ class _HistoryScreenState extends State<_HistoryScreen> {
             FilledButton.tonal(onPressed: _load, child: const Text('重试')),
           ],
         ),
-      ),
+      );
     }
     if (_episodes.isEmpty) {
       return const Center(child: Text('还没有收听历史'));

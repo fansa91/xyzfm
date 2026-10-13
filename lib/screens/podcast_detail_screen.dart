@@ -280,7 +280,7 @@ class _EpisodeListTab extends StatefulWidget {
 }
 
 class _EpisodeListTabState extends State<_EpisodeListTab>
-    with AutomaticKeepAlivesClientMixin {
+    with AutomaticKeepAliveClientMixin {
   bool _loading = true;
   String? _error;
   List<Episode> _episodes = [];
@@ -417,7 +417,7 @@ class _PopularTab extends StatefulWidget {
 }
 
 class _PopularTabState extends State<_PopularTab>
-    with AutomaticKeepAlivesClientMixin {
+    with AutomaticKeepAliveClientMixin {
   bool _loading = true;
   List<Episode> _episodes = [];
 
@@ -472,7 +472,7 @@ class _RelatedTab extends StatefulWidget {
 }
 
 class _RelatedTabState extends State<_RelatedTab>
-    with AutomaticKeepAlivesClientMixin {
+    with AutomaticKeepAliveClientMixin {
   bool _loading = true;
   List<Podcast> _podcasts = [];
 
