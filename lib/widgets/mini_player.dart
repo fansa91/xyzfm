@@ -46,7 +46,7 @@ class MiniPlayer extends StatelessWidget {
               child: Row(
                 children: [
                   CoverImage(
-                    url: episode.podcastImage,
+                    url: episode.coverUrl,
                     size: 44,
                     radius: 8,
                   ),

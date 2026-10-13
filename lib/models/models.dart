@@ -112,6 +112,7 @@ class Episode {
   final String audioUrl; // media.source.url（付费单集可能为空）
   final int durationMs;
   final String pubDate;
+  final String image; // 单集自身的封面（部分列表接口返回）
   final String podcastPid;
   final String podcastTitle;
   final String podcastImage;
@@ -124,6 +125,9 @@ class Episode {
   final int commentCount;
   final int favoriteCount;
 
+  /// 列表封面：优先播客封面，回退单集自身封面。
+  String get coverUrl => podcastImage.isNotEmpty ? podcastImage : image;
+
   const Episode({
     this.eid = '',
     this.title = '',
@@ -132,6 +136,7 @@ class Episode {
     this.audioUrl = '',
     this.durationMs = 0,
     this.pubDate = '',
+    this.image = '',
     this.podcastPid = '',
     this.podcastTitle = '',
     this.podcastImage = '',
@@ -193,6 +198,7 @@ class Episode {
       audioUrl: httpsUrl(audioUrl),
       durationMs: _durationMs(json['duration']),
       pubDate: str(json['pubDate']),
+      image: picUrl(json['image']),
       podcastPid: podcastPid,
       podcastTitle: podcastTitle,
       podcastImage: podcastImage,

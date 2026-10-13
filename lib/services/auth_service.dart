@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -28,6 +30,7 @@ class AuthService extends ChangeNotifier {
   static const _keyRefreshToken = 'xyz_refresh_token';
   static const _keyUid = 'xyz_uid';
   static const _keyNickname = 'xyz_nickname';
+  static const _keyDeviceId = 'xyz_device_id';
   static const _keyAvatar = 'xyz_avatar';
   static const _keyBio = 'xyz_bio';
 
@@ -164,6 +167,13 @@ class AuthService extends ChangeNotifier {
   /// 失败则登出。
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    // 设备 ID：评论等接口必需，首次生成后持久化（UUID v4 大写格式）。
+    var deviceId = _prefs!.getString(_keyDeviceId) ?? '';
+    if (deviceId.isEmpty) {
+      deviceId = _generateDeviceId();
+      await _prefs!.setString(_keyDeviceId, deviceId);
+    }
+    api.deviceId = deviceId;
     final access = _prefs!.getString(_keyAccessToken);
     final refresh = _prefs!.getString(_keyRefreshToken);
     if (access != null && access.isNotEmpty) {
@@ -223,6 +233,18 @@ class AuthService extends ChangeNotifier {
     await p.setString(_keyNickname, _nickname);
     await p.setString(_keyAvatar, _avatar);
     await p.setString(_keyBio, _bio);
+  }
+
+  /// 生成 UUID v4（大写连字符格式），对齐官方 App 的 x-jike-device-id。
+  static String _generateDeviceId() {
+    final r = Random.secure();
+    final b = List<int>.generate(16, (_) => r.nextInt(256));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    final h =
+        b.map((e) => e.toRadixString(16).padLeft(2, '0').toUpperCase()).join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-'
+        '${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
   }
 }
 

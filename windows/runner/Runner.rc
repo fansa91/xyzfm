@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "xyzfm" "\0"
-            VALUE "FileDescription", "netease_music" "\0"
+            VALUE "CompanyName", "xyzFM" "\0"
+            VALUE "FileDescription", "xyzFM" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "netease_music" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 xyzfm. All rights reserved." "\0"
-            VALUE "OriginalFilename", "netease_music.exe" "\0"
-            VALUE "ProductName", "netease_music" "\0"
+            VALUE "InternalName", "xyzfm" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 xyzFM. All rights reserved." "\0"
+            VALUE "OriginalFilename", "xyzfm.exe" "\0"
+            VALUE "ProductName", "xyzFM" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

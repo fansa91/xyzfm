@@ -403,7 +403,8 @@ class XyzService {
 
   /// 已收藏的单集列表。
   Future<List<Episode>> favoriteEpisodes() async {
-    final resp = await api.post('/v1/favorite/list', {});
+    // 注意：此接口 abtest-info 必须为 "{}"，用默认 enable 值会被服务端拒收。
+    final resp = await api.post('/v1/favorite/list', {}, '{}');
     return _dataList(resp).map(Episode.fromJson).toList();
   }
 
@@ -428,6 +429,13 @@ class XyzService {
     return list;
   }
 
+  /// 上报单集已播放（写入收听历史）。abtest-info 必须为 "{}"。
+  /// 失败静默，由调用方决定是否重试。
+  Future<void> reportPlayed(String eid) async {
+    if (eid.isEmpty) return;
+    await api.post('/v1/episode-played/create', {'eid': eid}, '{}');
+  }
+
   /// 订阅更新（收件箱）。元素字段平铺，个别可能包 episode 层，兼容。
   Future<List<Episode>> inboxList() async {
     final resp = await api.post('/v1/inbox/list', {'limit': '20'});
@@ -442,12 +450,13 @@ class XyzService {
   // ------------------------------------------------------------------ 评论与时间点
 
   /// 单集评论。order: HOT 全部评论 / TIME 最新评论 / TIMESTAMP 时点评论。
+  /// 注意：此接口必须用极简请求头（postMinimal），完整 App 头会被拒收。
   Future<Paged<XyzComment>> comments(
     String eid, {
     String order = 'HOT',
     Map<String, dynamic>? loadMoreKey,
   }) async {
-    final resp = await api.post('/v1/comment/list-primary', {
+    final resp = await api.postMinimal('/v1/comment/list-primary', {
       'order': order,
       'owner': {'id': eid, 'type': 'EPISODE'},
       if (loadMoreKey != null)

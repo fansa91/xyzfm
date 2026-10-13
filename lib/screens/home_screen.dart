@@ -356,7 +356,7 @@ class _ChartEpisodeCard extends StatelessWidget {
                 ),
               ),
             ),
-            CoverImage(url: episode.podcastImage, size: 64, radius: 8),
+            CoverImage(url: episode.coverUrl, size: 64, radius: 8),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

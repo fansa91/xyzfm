@@ -114,7 +114,7 @@ class _EpisodeTileState extends State<EpisodeTile> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                CoverImage(url: ep.podcastImage, size: 56, radius: 8),
+                CoverImage(url: ep.coverUrl, size: 56, radius: 8),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

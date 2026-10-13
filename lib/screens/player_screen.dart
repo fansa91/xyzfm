@@ -211,29 +211,33 @@ class _PlayerScreenState extends State<PlayerScreen>
     final posMs = position.inMilliseconds.clamp(0, maxMs);
 
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Column(
-          children: [
-            const Spacer(flex: 2),
-            // 大圆角封面
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
+      child: Center(
+        child: ConstrainedBox(
+          // 桌面宽屏下限制内容宽度，封面不再撑满
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              children: [
+                const Spacer(flex: 2),
+                // 大圆角封面
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: CoverImage(
-                url: episode.podcastImage,
-                size: MediaQuery.of(context).size.width - 120,
-                radius: 20,
-              ),
-            ),
+                  child: CoverImage(
+                    url: episode.coverUrl,
+                    size: 400,
+                    radius: 20,
+                  ),
+                ),
             const SizedBox(height: 28),
             // 标题 / 播客名
             Text(
@@ -396,7 +400,9 @@ class _PlayerScreenState extends State<PlayerScreen>
           ],
         ),
       ),
-    );
+    ),
+    ),
+  );
   }
 
   Widget _buildNotesTab(BuildContext context, Episode episode) {
@@ -475,7 +481,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             final selected = i == player.index;
             return ListTile(
               selected: selected,
-              leading: CoverImage(url: e.podcastImage, size: 44, radius: 6),
+              leading: CoverImage(url: e.coverUrl, size: 44, radius: 6),
               title: Text(e.title,
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: Text(e.podcastTitle,

@@ -183,6 +183,8 @@ class PlayerService extends ChangeNotifier {
           notifyListeners();
           // 恢复云端播放进度
           _restoreProgress(ep);
+          // 上报收听历史（失败静默）
+          _reportPlayed(ep.eid);
           _prefetchNext(n);
           return;
         } catch (e) {
@@ -290,6 +292,12 @@ class PlayerService extends ChangeNotifier {
     final cached = _resolved[ep.eid];
     if (cached != null && cached.audioUrl.isNotEmpty) return;
     _resolveEpisode(ep).catchError((_) => null);
+  }
+
+  /// 上报单集已播放到收听历史（失败静默，不阻塞播放）。
+  void _reportPlayed(String eid) {
+    if (!xyz.api.hasToken) return;
+    xyz.reportPlayed(eid).catchError((_) => null);
   }
 
   // ---------- 播放进度云同步 ----------

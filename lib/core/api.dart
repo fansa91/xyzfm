@@ -38,6 +38,10 @@ class XyzApiClient {
   String? _accessToken;
   String? _refreshToken;
 
+  /// 设备 ID（x-jike-device-id），评论等接口必需。由 AuthService 初始化时
+  /// 生成并持久化（UUID v4，大写连字符格式，对齐官方 App 抓包）。
+  String deviceId = '';
+
   /// token 被设置/刷新/清空时的回调，供 AuthService 做持久化。
   void Function(String? access, String? refresh)? onTokensChanged;
 
@@ -71,6 +75,7 @@ class XyzApiClient {
       'OS': 'ios',
       if (_accessToken != null && _accessToken!.isNotEmpty)
         'x-jike-access-token': _accessToken!,
+      if (deviceId.isNotEmpty) 'x-jike-device-id': deviceId,
       'Manufacturer': 'Apple',
       'BundleID': 'app.podcast.cosmos',
       'abtest-info': abtestInfo ?? _abtestDefault,
@@ -109,6 +114,27 @@ class XyzApiClient {
       () => _dio.get(
         '$baseUrl$path',
         options: Options(headers: _appHeaders(abtestInfo: abtestInfo)),
+      ),
+    );
+  }
+
+  /// 极简头 POST：仅 token + device-id + Content-Type。
+  /// 评论列表（/v1/comment/list-primary）等接口用完整 App 头会被服务端
+  /// 拒收（rpc_error），必须用此形态（对齐 ultrazg/xyz 抓包）。
+  Future<Map<String, dynamic>> postMinimal(
+    String path, [
+    Map<String, dynamic>? body,
+  ]) {
+    return _request(
+      () => _dio.post(
+        '$baseUrl$path',
+        data: body ?? <String, dynamic>{},
+        options: Options(headers: {
+          if (_accessToken != null && _accessToken!.isNotEmpty)
+            'x-jike-access-token': _accessToken!,
+          if (deviceId.isNotEmpty) 'x-jike-device-id': deviceId,
+          'Content-Type': 'application/json',
+        }),
       ),
     );
   }
